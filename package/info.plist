@@ -33,6 +33,25 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>browser</key>
+				<string></string>
+				<key>spaces</key>
+				<string></string>
+				<key>url</key>
+				<string>{query}</string>
+				<key>utf8</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.openurl</string>
+			<key>uid</key>
+			<string>371721AB-7368-4375-A42C-CC93839C6620</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>alfredfiltersresults</key>
 				<false/>
 				<key>alfredfiltersresultsmatchmode</key>
@@ -125,8 +144,11 @@ foreach ( $configProjects as $p ) {
 	array_push($projects, $project);
 }
 
-// 各プロジェクトに対して検索実行
+// Macで入力した「が」などが「か」と濁点に分かれてしまいBacklogの検索に失敗するため、
+// nkfを使って入力文字を Unicode の NFDから NFCに変換する。
 $orig = trim(shell_exec('echo "{query}" | /usr/local/bin/nkf -wLu --ic=UTF8-MAC'));
+
+// 各プロジェクトに対して検索実行
 $results = array();
 foreach ( $projects as $project ) {
 	$searchResults = $project-&gt;search($orig);
@@ -182,25 +204,6 @@ echo $wf-&gt;toxml();
 			<string>63F60794-BB56-4415-9372-BAF974C3A7E1</string>
 			<key>version</key>
 			<integer>2</integer>
-		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>browser</key>
-				<string></string>
-				<key>spaces</key>
-				<string></string>
-				<key>url</key>
-				<string>{query}</string>
-				<key>utf8</key>
-				<true/>
-			</dict>
-			<key>type</key>
-			<string>alfred.workflow.action.openurl</string>
-			<key>uid</key>
-			<string>371721AB-7368-4375-A42C-CC93839C6620</string>
-			<key>version</key>
-			<integer>1</integer>
 		</dict>
 	</array>
 	<key>readme</key>
