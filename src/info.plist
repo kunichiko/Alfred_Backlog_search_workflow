@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>jp.ohnaka.alfred-backlog-issue-search</string>
+	<key>connections</key>
+	<dict>
+		<key>63F60794-BB56-4415-9372-BAF974C3A7E1</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>371721AB-7368-4375-A42C-CC93839C6620</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Kunihiko Ohnaka</string>
+	<key>description</key>
+	<string>Backlog 課題検索</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Backlog 課題検索</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>0</integer>
+				<key>escaping</key>
+				<integer>36</integer>
+				<key>keyword</key>
+				<string>bs</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<false/>
+				<key>queuedelaymode</key>
+				<integer>1</integer>
+				<key>queuemode</key>
+				<integer>2</integer>
+				<key>runningsubtext</key>
+				<string>Retrieving search suggestions ...</string>
+				<key>script</key>
+				<string>require_once('workflows.php');
+
+class Result { 
+	public $projectCode;
+	public $url;
+	public $title;
+	public $updated;
+	function __construct($projectCode_, $url_, $title_, $updated_) {
+		$this-&gt;projectCode = $projectCode_;
+		$this-&gt;url = $url_;
+		$this-&gt;title = $title_;
+		$this-&gt;updated = $updated_;
+	}
+}
+
+class Project {
+	public $apikey;
+	public $projectId;
+	public $workspaceUrl;
+	public $projectCode;
+
+	function __construct($apiKey_, $projectId_, $workspaceUrl_, $projectCode_) {
+		$this-&gt;apiKey = $apiKey_;
+		$this-&gt;projectId = $projectId_;
+		$this-&gt;workspaceUrl = $workspaceUrl_;
+		$this-&gt;projectCode = $projectCode_;
+	}
+
+	public function search(string $query) {
+		if ( strlen($query) == 0 || (!is_numeric($query) &amp;&amp; strlen($query) == 1) ) {
+			$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/projects/".$this-&gt;projectCode, $this-&gt;projectCode." プロジェクトホームを開く", "");
+			return array($result);
+		}
+
+		$wf = new Workflows();
+		$results = array();
+
+		if ( is_numeric($query) &amp;&amp; strlen($query) &lt; 4 ) {
+			$results[] = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$this-&gt;projectCode."-".$query, $this-&gt;projectCode."-".$query."を開く", "Z");
+		}
+
+		$json = $wf-&gt;request( $this-&gt;workspaceUrl."/api/v2/issues?apiKey=".$this-&gt;apiKey."&amp;projectId[]=".$this-&gt;projectId."&amp;count=10&amp;sort=updated&amp;order=desc&amp;keyword=".urlencode($query) );
+
+		$array = json_decode( $json , true );
+
+		for($i=0; $i &lt; 9; $i++) {
+		    $issueKey = $array[$i]["issueKey"]; // HOGE-123 など
+			if ( $issueKey == null ) {
+				break;
+			}
+			$updated = $array[$i]["updated"];
+		    $link = $this-&gt;workspaceUrl."/view/".$issueKey;
+		    $summary = $array[$i]["summary"]; // タイトル
+			$results[] = new Result($this-&gt;projectCode, $link, $issueKey." ".$summary, $updated);
+		}
+		return $results;
+	}
+}
+
+// Backlogプロジェクト設定ファイルを読み込み
+$configFile = "config.json";
+$configJson = file_get_contents($configFile);
+$configProjects = json_decode( $configJson, true);
+$projects = array();
+foreach ( $configProjects as $p ) {
+	$project = new Project($p["apiKey"], $p["projectId"], $p["projectUrl"], $p["projectCode"]);
+	array_push($projects, $project);
+}
+
+// 各プロジェクトに対して検索実行
+$orig = trim(shell_exec('echo "{query}" | /usr/local/bin/nkf -wLu --ic=UTF8-MAC'));
+$results = array();
+foreach ( $projects as $project ) {
+	$searchResults = $project-&gt;search($orig);
+	$results = array_merge($results, $searchResults);
+}
+
+$wf = new Workflows();
+if ( count($results) == 0 ) {
+	$wf-&gt;result(
+		0,
+		"",
+     	"結果が見つかりません",
+		'',
+		$icon
+ 	);
+
+} else {
+	foreach ( $results as $key =&gt; $value) {
+        $sort_keys[$key] = $value-&gt;updated;
+	}
+	array_multisort($sort_keys, SORT_DESC, $results);
+
+	$i=0;
+	foreach ( $results as $result) {
+		$wf-&gt;result(
+			$i++,
+			$result-&gt;url,
+			$result-&gt;title,
+			'',
+			"thumbs/".$result-&gt;projectCode.".png"
+		);
+	}
+}
+
+echo $wf-&gt;toxml();
+</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Search Backlog Issue with Suggestions</string>
+				<key>title</key>
+				<string>Search Backlog Issue</string>
+				<key>type</key>
+				<integer>1</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>63F60794-BB56-4415-9372-BAF974C3A7E1</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>browser</key>
+				<string></string>
+				<key>spaces</key>
+				<string></string>
+				<key>url</key>
+				<string>{query}</string>
+				<key>utf8</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.openurl</string>
+			<key>uid</key>
+			<string>371721AB-7368-4375-A42C-CC93839C6620</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string></string>
+	<key>uidata</key>
+	<dict>
+		<key>371721AB-7368-4375-A42C-CC93839C6620</key>
+		<dict>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>50</integer>
+		</dict>
+		<key>63F60794-BB56-4415-9372-BAF974C3A7E1</key>
+		<dict>
+			<key>xpos</key>
+			<integer>50</integer>
+			<key>ypos</key>
+			<integer>50</integer>
+		</dict>
+	</dict>
+	<key>version</key>
+	<string>1.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/kunichiko/Alfred_Backlog_search_workflow</string>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+[
+    {
+        "apiKey": "please_set_your_backlog_apikey",
+        "projectId": "please_set_your_backlog_project_id_of_ABC",
+        "projectUrl": "https://xxxx.backlog.jp",
+        "projectCode": "ABC"
+    },
+    {
+        "apiKey": "please_set_your_backlog_apikey",
+        "projectId": "please_set_your_backlog_project_id_of_DEF",
+        "projectUrl": "https://xxxx.backlog.jp",
+        "projectCode": "DEF"
+    }
+]
