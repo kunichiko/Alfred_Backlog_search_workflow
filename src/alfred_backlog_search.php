@@ -4,11 +4,13 @@ class Result {
 	public $projectCode;
 	public $url;
 	public $title;
+	public $subTitle;
 	public $updated;
-	function __construct($projectCode_, $url_, $title_, $updated_) {
+	function __construct($projectCode_, $url_, $title_, $subTitle_, $updated_) {
 		$this->projectCode = $projectCode_;
 		$this->url = $url_;
 		$this->title = $title_;
+		$this->subTitle = $subTitle_;
 		$this->updated = $updated_;
 	}
 }
@@ -26,17 +28,46 @@ class Project {
 		$this->projectCode = $projectCode_;
 	}
 
+	function setIssueToResult($issue, $result) {
+		$issueKey = $issue["issueKey"]; // HOGE-123 など
+		if ( $issueKey == null ) {
+			return false;
+		}
+		$updated = $issue["updated"];
+		$link = $this->workspaceUrl."/view/".$issueKey;
+		$summary = $issue["summary"]; // タイトル
+		$owner = $issue["createdUser"]["name"]; // 登録者名
+		$assignee = $issue["assignee"]["name"]; // 担当者名
+		// 
+		$result->url = $link;
+		$result->title = $summary;
+		$result->subTitle = $issueKey." ".$owner." → ".$assignee;
+		$result->updated = $updated;
+		return true;
+	 }
+
 	public function search(string $query) {
+		// 検索語が指定されていない時、もしくは検索語が数字以外の1文字だった場合
+		// この場合、Backlog課題検索APIは1文字の検索ができないので「プロジェクトホームを開く」を返す
+		// (数字一文字の場合は課題番号として有効なので次へ)
 		if ( strlen($query) == 0 || (!is_numeric($query) && strlen($query) == 1) ) {
-			$result = new Result($this->projectCode, $this->workspaceUrl."/projects/".$this->projectCode, $this->projectCode." プロジェクトホームを開く", "");
+			$result = new Result($this->projectCode, $this->workspaceUrl."/projects/".$this->projectCode, "プロジェクトホームを開く", $this->projectCode, "Z");
 			return array($result);
 		}
 
 		$wf = new Workflows();
 		$results = array();
 
+		// 1〜4桁の数字だった場合は課題番号とみなして結果の一番上に入れる(ソートキーを'Z'に設定)
 		if ( is_numeric($query) && strlen($query) < 4 ) {
-			$results[] = new Result($this->projectCode, $this->workspaceUrl."/view/".$this->projectCode."-".$query, $this->projectCode."-".$query."を開く", "Z");
+			$issueKey = $this->projectCode."-".$query;
+			$json = $wf->request( $this->workspaceUrl."/api/v2/issues/".$issueKey."?apiKey=".$this->apiKey );
+			$issue = json_decode ( $json, true);
+			$result = new Result($this->projectCode, "", "", "", "");
+			if ( $this->setIssueToResult($issue, $result) ) {
+				$result->updated = "Z";
+				$results[] = $result;
+			}
 		}
 
 		$json = $wf->request( $this->workspaceUrl."/api/v2/issues?apiKey=".$this->apiKey."&projectId[]=".$this->projectId."&count=10&sort=updated&order=desc&keyword=".urlencode($query) );
@@ -44,14 +75,11 @@ class Project {
 		$array = json_decode( $json , true );
 
 		for($i=0; $i < 9; $i++) {
-		    $issueKey = $array[$i]["issueKey"]; // HOGE-123 など
-			if ( $issueKey == null ) {
-				break;
+			$issue = $array[$i];
+			$result = new Result($this->projectCode, "", "", "", "");
+			if ( $this->setIssueToResult($issue, $result) ) {
+				$results[] = $result;
 			}
-			$updated = $array[$i]["updated"];
-		    $link = $this->workspaceUrl."/view/".$issueKey;
-		    $summary = $array[$i]["summary"]; // タイトル
-			$results[] = new Result($this->projectCode, $link, $issueKey." ".$summary, $updated);
 		}
 		return $results;
 	}
@@ -97,10 +125,10 @@ if ( count($results) == 0 ) {
 	$i=0;
 	foreach ( $results as $result) {
 		$wf->result(
-			$i++,
-			$result->url,
+			$result->url, // Alfredが認識するユニークID
+			$result->url, // arg (次のフローに渡る値)
 			$result->title,
-			'',
+			$result->subTitle,
 			"thumbs/".$result->projectCode.".png"
 		);
 	}
