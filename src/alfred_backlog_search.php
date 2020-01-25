@@ -46,7 +46,7 @@ class Project {
 		return true;
 	 }
 
-	public function search(string $query) {
+	public function search(string $query, bool $isFirst) {
 		// 検索語が指定されていない時、もしくは検索語が数字以外の1文字だった場合
 		// この場合、Backlog課題検索APIは1文字の検索ができないので「プロジェクトホームを開く」を返す
 		// (数字一文字の場合は課題番号として有効なので次へ)
@@ -61,13 +61,19 @@ class Project {
 		// 1〜4桁の数字だった場合は課題番号とみなして結果の一番上に入れる(ソートキーを'Z'に設定)
 		if ( is_numeric($query) && strlen($query) < 4 ) {
 			$issueKey = $this->projectCode."-".$query;
+			if ( $isFirst ) {
+				$results[] = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
+				return $results;
+			}
 			$json = $wf->request( $this->workspaceUrl."/api/v2/issues/".$issueKey."?apiKey=".$this->apiKey );
 			$issue = json_decode ( $json, true);
 			$result = new Result($this->projectCode, "", "", "", "");
 			if ( $this->setIssueToResult($issue, $result) ) {
 				$result->updated = "Z";
-				$results[] = $result;
+			} else {
+				$results[] = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
 			}
+			$results[] = $result;
 		}
 
 		$json = $wf->request( $this->workspaceUrl."/api/v2/issues?apiKey=".$this->apiKey."&projectId[]=".$this->projectId."&count=10&sort=updated&order=desc&keyword=".urlencode($query) );
@@ -83,6 +89,15 @@ class Project {
 		}
 		return $results;
 	}
+}
+
+$wf = new Workflows();
+
+// 初回かどうかを検出
+$isFirst = getenv('isRerun') == null;
+if ( $isFirst ) {
+	$wf->variables['isRerun'] = true;
+	$wf->rerun = 0.5; // 0.5秒後に再呼び出しさせる
 }
 
 // Backlogプロジェクト設定ファイルを読み込み
@@ -102,11 +117,10 @@ $orig = trim(shell_exec('echo "{query}" | /usr/local/bin/nkf -wLu --ic=UTF8-MAC'
 // 各プロジェクトに対して検索実行
 $results = array();
 foreach ( $projects as $project ) {
-	$searchResults = $project->search($orig);
+	$searchResults = $project->search($orig, $isFirst);
 	$results = array_merge($results, $searchResults);
 }
 
-$wf = new Workflows();
 if ( count($results) == 0 ) {
 	$wf->result(
 		0,
@@ -125,7 +139,7 @@ if ( count($results) == 0 ) {
 	$i=0;
 	foreach ( $results as $result) {
 		$wf->result(
-			$result->url, // Alfredが認識するユニークID
+			null, // Alfredが認識するユニークID。nullにしておくとこちらが決めた順番のまま表示される。
 			$result->url, // arg (次のフローに渡る値)
 			$result->title,
 			$result->subTitle,
@@ -134,4 +148,5 @@ if ( count($results) == 0 ) {
 	}
 }
 
-echo $wf->toxml();
+//error_log($wf->tojson());
+echo $wf->tojson();
