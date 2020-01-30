@@ -483,7 +483,9 @@ class Workflows {
 			$r = array();
 			foreach( $c_keys as $key ):
 				if ( $key == 'uid' ):
-					$r['uid'] = $b[$key];
+					if ( $b[$key] != null ):
+						$r['uid'] = $b[$key];
+					endif;
 				elseif ( $key == 'arg' ):
 					$r['arg'] = $b[$key];
 				elseif ( $key == 'type' ):

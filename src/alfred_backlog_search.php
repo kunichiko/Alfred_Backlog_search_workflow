@@ -71,7 +71,7 @@ class Project {
 			if ( $this->setIssueToResult($issue, $result) ) {
 				$result->updated = "Z";
 			} else {
-				$results[] = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
+				$result = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
 			}
 			$results[] = $result;
 		}
@@ -131,6 +131,7 @@ if ( count($results) == 0 ) {
  	);
 
 } else {
+	$sort_keys = array();
 	foreach ( $results as $key => $value) {
         $sort_keys[$key] = $value->updated;
 	}

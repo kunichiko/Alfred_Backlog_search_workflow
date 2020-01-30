@@ -15,6 +15,8 @@ class Workflows {
 	private $path;
 	private $home;
 	private $results;
+	public $rerun;
+	public $variables;
 
 	/**
 	* Description:
@@ -457,6 +459,62 @@ class Workflows {
 		array_push( $this->results, $temp );
 
 		return $temp;
+	}
+
+
+	public function tojson() {
+
+		if ( empty( $this->results ) ):
+			return false;
+		endif;
+
+		$a = $this->results;
+
+		if ( $this->rerun != null ) {
+			$ret["rerun"] = $this->rerun;
+		}
+		if ( $this->variables != null ) {
+			$ret["variables"] = $this->variables;
+		}
+
+		$ret["items"] = array();
+		foreach( $a as $b ):
+			$c_keys = array_keys( $b );
+			$r = array();
+			foreach( $c_keys as $key ):
+				if ( $key == 'uid' ):
+					if ( $b[$key] != null ):
+						$r['uid'] = $b[$key];
+					endif;
+				elseif ( $key == 'arg' ):
+					$r['arg'] = $b[$key];
+				elseif ( $key == 'type' ):
+					$r['type'] = $b[$key];
+				elseif ( $key == 'valid' ):
+					if ( $b[$key] == 'yes' || $b[$key] == 'no' ):
+						$r['valid'] = $b[$key];
+					endif;
+				elseif ( $key == 'autocomplete' ):
+					$r['autocomplete'] = $b[$key];
+				elseif ( $key == 'icon' ):
+					if ( substr( $b[$key], 0, 9 ) == 'fileicon:' ):
+						$val = substr( $b[$key], 9 );
+						$r['icon'] = array('type'=>'fileicon','path'=>$val);
+					elseif ( substr( $b[$key], 0, 9 ) == 'filetype:' ):
+						$val = substr( $b[$key], 9 );
+						$r['icon'] = array('type'=>'fileicon','path'=>$val);
+					else:
+						$r['icon'] = array('path'=>$b[$key]);
+					endif;
+				else:
+					$r[$key] = $b[$key];
+				endif;
+			endforeach;
+			$ret["items"][] = $r;
+		endforeach;
+
+		return json_encode($ret, JSON_PRETTY_PRINT);
+
 	}
 
 }

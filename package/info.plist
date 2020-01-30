@@ -81,11 +81,13 @@ class Result {
 	public $projectCode;
 	public $url;
 	public $title;
+	public $subTitle;
 	public $updated;
-	function __construct($projectCode_, $url_, $title_, $updated_) {
+	function __construct($projectCode_, $url_, $title_, $subTitle_, $updated_) {
 		$this-&gt;projectCode = $projectCode_;
 		$this-&gt;url = $url_;
 		$this-&gt;title = $title_;
+		$this-&gt;subTitle = $subTitle_;
 		$this-&gt;updated = $updated_;
 	}
 }
@@ -103,17 +105,52 @@ class Project {
 		$this-&gt;projectCode = $projectCode_;
 	}
 
-	public function search(string $query) {
+	function setIssueToResult($issue, $result) {
+		$issueKey = $issue["issueKey"]; // HOGE-123 など
+		if ( $issueKey == null ) {
+			return false;
+		}
+		$updated = $issue["updated"];
+		$link = $this-&gt;workspaceUrl."/view/".$issueKey;
+		$summary = $issue["summary"]; // タイトル
+		$owner = $issue["createdUser"]["name"]; // 登録者名
+		$assignee = $issue["assignee"]["name"]; // 担当者名
+		// 
+		$result-&gt;url = $link;
+		$result-&gt;title = $summary;
+		$result-&gt;subTitle = $issueKey." ".$owner." → ".$assignee;
+		$result-&gt;updated = $updated;
+		return true;
+	 }
+
+	public function search(string $query, bool $isFirst) {
+		// 検索語が指定されていない時、もしくは検索語が数字以外の1文字だった場合
+		// この場合、Backlog課題検索APIは1文字の検索ができないので「プロジェクトホームを開く」を返す
+		// (数字一文字の場合は課題番号として有効なので次へ)
 		if ( strlen($query) == 0 || (!is_numeric($query) &amp;&amp; strlen($query) == 1) ) {
-			$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/projects/".$this-&gt;projectCode, $this-&gt;projectCode." プロジェクトホームを開く", "");
+			$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/projects/".$this-&gt;projectCode, "プロジェクトホームを開く", $this-&gt;projectCode, "Z");
 			return array($result);
 		}
 
 		$wf = new Workflows();
 		$results = array();
 
+		// 1〜4桁の数字だった場合は課題番号とみなして結果の一番上に入れる(ソートキーを'Z'に設定)
 		if ( is_numeric($query) &amp;&amp; strlen($query) &lt; 4 ) {
-			$results[] = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$this-&gt;projectCode."-".$query, $this-&gt;projectCode."-".$query."を開く", "Z");
+			$issueKey = $this-&gt;projectCode."-".$query;
+			if ( $isFirst ) {
+				$results[] = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
+				return $results;
+			}
+			$json = $wf-&gt;request( $this-&gt;workspaceUrl."/api/v2/issues/".$issueKey."?apiKey=".$this-&gt;apiKey );
+			$issue = json_decode ( $json, true);
+			$result = new Result($this-&gt;projectCode, "", "", "", "");
+			if ( $this-&gt;setIssueToResult($issue, $result) ) {
+				$result-&gt;updated = "Z";
+			} else {
+				$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
+			}
+			$results[] = $result;
 		}
 
 		$json = $wf-&gt;request( $this-&gt;workspaceUrl."/api/v2/issues?apiKey=".$this-&gt;apiKey."&amp;projectId[]=".$this-&gt;projectId."&amp;count=10&amp;sort=updated&amp;order=desc&amp;keyword=".urlencode($query) );
@@ -121,17 +158,23 @@ class Project {
 		$array = json_decode( $json , true );
 
 		for($i=0; $i &lt; 9; $i++) {
-		    $issueKey = $array[$i]["issueKey"]; // HOGE-123 など
-			if ( $issueKey == null ) {
-				break;
+			$issue = $array[$i];
+			$result = new Result($this-&gt;projectCode, "", "", "", "");
+			if ( $this-&gt;setIssueToResult($issue, $result) ) {
+				$results[] = $result;
 			}
-			$updated = $array[$i]["updated"];
-		    $link = $this-&gt;workspaceUrl."/view/".$issueKey;
-		    $summary = $array[$i]["summary"]; // タイトル
-			$results[] = new Result($this-&gt;projectCode, $link, $issueKey." ".$summary, $updated);
 		}
 		return $results;
 	}
+}
+
+$wf = new Workflows();
+
+// 初回かどうかを検出
+$isFirst = getenv('isRerun') == null;
+if ( $isFirst ) {
+	$wf-&gt;variables['isRerun'] = true;
+	$wf-&gt;rerun = 0.5; // 0.5秒後に再呼び出しさせる
 }
 
 // Backlogプロジェクト設定ファイルを読み込み
@@ -151,11 +194,10 @@ $orig = trim(shell_exec('echo "{query}" | /usr/local/bin/nkf -wLu --ic=UTF8-MAC'
 // 各プロジェクトに対して検索実行
 $results = array();
 foreach ( $projects as $project ) {
-	$searchResults = $project-&gt;search($orig);
+	$searchResults = $project-&gt;search($orig, $isFirst);
 	$results = array_merge($results, $searchResults);
 }
 
-$wf = new Workflows();
 if ( count($results) == 0 ) {
 	$wf-&gt;result(
 		0,
@@ -166,6 +208,7 @@ if ( count($results) == 0 ) {
  	);
 
 } else {
+	$sort_keys = array();
 	foreach ( $results as $key =&gt; $value) {
         $sort_keys[$key] = $value-&gt;updated;
 	}
@@ -174,16 +217,17 @@ if ( count($results) == 0 ) {
 	$i=0;
 	foreach ( $results as $result) {
 		$wf-&gt;result(
-			$i++,
-			$result-&gt;url,
+			null, // Alfredが認識するユニークID。nullにしておくとこちらが決めた順番のまま表示される。
+			$result-&gt;url, // arg (次のフローに渡る値)
 			$result-&gt;title,
-			'',
+			$result-&gt;subTitle,
 			"thumbs/".$result-&gt;projectCode.".png"
 		);
 	}
 }
 
-echo $wf-&gt;toxml();
+//error_log($wf-&gt;tojson());
+echo $wf-&gt;tojson();
 </string>
 				<key>scriptargtype</key>
 				<integer>0</integer>
