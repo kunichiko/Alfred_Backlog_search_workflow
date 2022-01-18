@@ -29,6 +29,9 @@ class Project {
 	}
 
 	function setIssueToResult($issue, $result) {
+        if ( $issue == null) {
+            return false;
+        }
 		$issueKey = $issue["issueKey"]; // HOGE-123 など
 		if ( $issueKey == null ) {
 			return false;
@@ -36,8 +39,8 @@ class Project {
 		$updated = $issue["updated"];
 		$link = $this->workspaceUrl."/view/".$issueKey;
 		$summary = $issue["summary"]; // タイトル
-		$owner = $issue["createdUser"]["name"]; // 登録者名
-		$assignee = $issue["assignee"]["name"]; // 担当者名
+		$owner = ($issue["createdUser"] ?? array('name'=>'Unknown'))["name"]; // 登録者名
+		$assignee = ($issue["assignee"] ?? array('name'=>'Unknown'))["name"]; // 担当者名
 		// 
 		$result->url = $link;
 		$result->title = $summary;
@@ -50,7 +53,7 @@ class Project {
 		// 検索語が指定されていない時、もしくは検索語が数字以外の1文字だった場合
 		// この場合、Backlog課題検索APIは1文字の検索ができないので「プロジェクトホームを開く」を返す
 		// (数字一文字の場合は課題番号として有効なので次へ)
-		if ( strlen($query) == 0 || (!is_numeric($query) && strlen($query) == 1) ) {
+		if ( is_null($query) || strlen($query) == 0 || (!is_numeric($query) && strlen($query) == 1) ) {
 			$result = new Result($this->projectCode, $this->workspaceUrl."/projects/".$this->projectCode, "プロジェクトホームを開く", $this->projectCode, "Z");
 			return array($result);
 		}
@@ -65,28 +68,34 @@ class Project {
 				$results[] = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
 				return $results;
 			}
+            //error_log("REQUEST 1\n");
 			$json = $wf->request( $this->workspaceUrl."/api/v2/issues/".$issueKey."?apiKey=".$this->apiKey );
+            //error_log($json);
 			$issue = json_decode ( $json, true);
+            //error_log(json_encode($issue));
 			$result = new Result($this->projectCode, "", "", "", "");
 			if ( $this->setIssueToResult($issue, $result) ) {
 				$result->updated = "Z";
 			} else {
-				$result = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."を開く", "", "Z");
+				$result = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."は見つかりませんでした", "", "Z");
 			}
 			$results[] = $result;
 		}
 
-		$json = $wf->request( $this->workspaceUrl."/api/v2/issues?apiKey=".$this->apiKey."&projectId[]=".$this->projectId."&count=10&sort=updated&order=desc&keyword=".urlencode($query) );
+		if ( strlen($query) > 2 ) {
+            //error_log("REQUEST 2\n");
+        	$json = $wf->request( $this->workspaceUrl."/api/v2/issues?apiKey=".$this->apiKey."&projectId[]=".$this->projectId."&count=10&sort=updated&order=desc&keyword=".urlencode($query) );
+            //error_log($json);
+    		$array = json_decode( $json , true );
 
-		$array = json_decode( $json , true );
-
-		for($i=0; $i < 9; $i++) {
-			$issue = $array[$i];
-			$result = new Result($this->projectCode, "", "", "", "");
-			if ( $this->setIssueToResult($issue, $result) ) {
-				$results[] = $result;
-			}
-		}
+            for($i=0; $i < count($array); $i++) {
+                $issue = $array[$i];
+                $result = new Result($this->projectCode, "", "", "", "");
+                if ( $this->setIssueToResult($issue, $result) ) {
+                    $results[] = $result;
+                }
+            }
+        }
 		return $results;
 	}
 }
@@ -112,7 +121,7 @@ foreach ( $configProjects as $p ) {
 
 // Macで入力した「が」などが「か」と濁点に分かれてしまいBacklogの検索に失敗するため、
 // nkfを使って入力文字を Unicode の NFDから NFCに変換する。
-$orig = trim(shell_exec('echo "{query}" | /usr/local/bin/nkf -wLu --ic=UTF8-MAC'));
+$orig = trim(shell_exec('echo "{query}" | PATH=$PATH:/usr/local/bin:/opt/homebrew/bin nkf -wLu --ic=UTF8-MAC'));
 
 // 各プロジェクトに対して検索実行
 $results = array();
@@ -127,7 +136,7 @@ if ( count($results) == 0 ) {
 		"",
      	"結果が見つかりません",
 		'',
-		$icon
+		''
  	);
 
 } else {
@@ -143,7 +152,7 @@ if ( count($results) == 0 ) {
 			null, // Alfredが認識するユニークID。nullにしておくとこちらが決めた順番のまま表示される。
 			$result->url, // arg (次のフローに渡る値)
 			$result->title,
-			$result->subTitle,
+			($result->subTitle),
 			"thumbs/".$result->projectCode.".png"
 		);
 	}
