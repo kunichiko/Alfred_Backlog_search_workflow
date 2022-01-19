@@ -33,6 +33,25 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>browser</key>
+				<string></string>
+				<key>spaces</key>
+				<string></string>
+				<key>url</key>
+				<string>{query}</string>
+				<key>utf8</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.openurl</string>
+			<key>uid</key>
+			<string>371721AB-7368-4375-A42C-CC93839C6620</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>alfredfiltersresults</key>
 				<false/>
 				<key>alfredfiltersresultsmatchmode</key>
@@ -89,9 +108,10 @@ class Project {
 	}
 
 	function setIssueToResult($issue, $result) {
-        if ( $issue == null) {
+        if ( $issue == null || !array_key_exists('issueKey', $issue)) {
             return false;
         }
+        error_log(json_encode($issue));
 		$issueKey = $issue["issueKey"]; // HOGE-123 など
 		if ( $issueKey == null ) {
 			return false;
@@ -241,25 +261,6 @@ echo $wf-&gt;tojson();
 			<key>version</key>
 			<integer>3</integer>
 		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>browser</key>
-				<string></string>
-				<key>spaces</key>
-				<string></string>
-				<key>url</key>
-				<string>{query}</string>
-				<key>utf8</key>
-				<true/>
-			</dict>
-			<key>type</key>
-			<string>alfred.workflow.action.openurl</string>
-			<key>uid</key>
-			<string>371721AB-7368-4375-A42C-CC93839C6620</string>
-			<key>version</key>
-			<integer>1</integer>
-		</dict>
 	</array>
 	<key>readme</key>
 	<string></string>
@@ -280,8 +281,10 @@ echo $wf-&gt;tojson();
 			<integer>50</integer>
 		</dict>
 	</dict>
+	<key>variablesdontexport</key>
+	<array/>
 	<key>version</key>
-	<string>1.0</string>
+	<string>1.1.1</string>
 	<key>webaddress</key>
 	<string>https://github.com/kunichiko/Alfred_Backlog_search_workflow</string>
 </dict>

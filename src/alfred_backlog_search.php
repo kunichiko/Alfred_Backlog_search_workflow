@@ -29,9 +29,10 @@ class Project {
 	}
 
 	function setIssueToResult($issue, $result) {
-        if ( $issue == null) {
+        if ( $issue == null || !array_key_exists('issueKey', $issue)) {
             return false;
         }
+        error_log(json_encode($issue));
 		$issueKey = $issue["issueKey"]; // HOGE-123 など
 		if ( $issueKey == null ) {
 			return false;
