@@ -32,7 +32,7 @@ class Project {
         if ( $issue == null || !array_key_exists('issueKey', $issue)) {
             return false;
         }
-        error_log(json_encode($issue));
+        //error_log(json_encode($issue));
 		$issueKey = $issue["issueKey"]; // HOGE-123 など
 		if ( $issueKey == null ) {
 			return false;
@@ -78,7 +78,7 @@ class Project {
 			if ( $this->setIssueToResult($issue, $result) ) {
 				$result->updated = "Z";
 			} else {
-				$result = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."は見つかりませんでした", "", "Z");
+				$result = new Result($this->projectCode, $this->workspaceUrl."/view/".$issueKey, $issueKey."は見つかりませんでした", "", "0");
 			}
 			$results[] = $result;
 		}
@@ -88,9 +88,9 @@ class Project {
         	$json = $wf->request( $this->workspaceUrl."/api/v2/issues?apiKey=".$this->apiKey."&projectId[]=".$this->projectId."&count=10&sort=updated&order=desc&keyword=".urlencode($query) );
             //error_log($json);
     		$array = json_decode( $json , true );
+            //error_log(json_encode($array));
 
-            for($i=0; $i < count($array); $i++) {
-                $issue = $array[$i];
+            foreach ($array as $issue) {
                 $result = new Result($this->projectCode, "", "", "", "");
                 if ( $this->setIssueToResult($issue, $result) ) {
                     $results[] = $result;

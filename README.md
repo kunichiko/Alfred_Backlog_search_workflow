@@ -65,7 +65,44 @@ PHPの国際化パッケージ(PHP-intl)があれば簡単にできそうだっ�
 
 余力があれば PHP-intlにも nkfにも依存しない解決方法を探します（それか Backlog側で対応してくれると嬉しいのですが……）。
 
-## Step 5. Alfred キーワードの変更
+## Step 5. PHPのインストール
+
+macOS Monterey 以降、PHPがデフォルトでインストールされなくなってしまいました。こちらも Homebrewでインストール可能です。
+
+```
+> brew search php
+==> Formulae
+brew-php-switcher   php@7.2             phplint             pcp
+php                 php@7.3             phpmd               pup
+php-code-sniffer    php@7.4             phpmyadmin
+php-cs-fixer        php@8.0             phpstan
+php-cs-fixer@2      phpbrew             phpunit
+
+==> Casks
+eclipse-php 
+```
+
+ひとまず、7.4あたりでいいと思います。
+
+```
+> brew install php@7.4
+```
+
+```
+> brew link php
+```
+
+インストールされたPHPは `/opt/homebrew/opt/php@7.4/bin/php` や `/opt/homebrew/bin` あたりに入りますので、パスを通しておきます。
+zshを使っている場合は、`.zshrc` あたりに以下を書いておいてください。
+
+```
+# PHP
+#If you need to have php@7.4 first in your PATH, run:
+export PATH="/opt/homebrew/opt/php@7.4/bin:$PATH"
+export PATH="/opt/homebrew/opt/php@7.4/sbin:$PATH"
+```
+
+## Step 6. Alfred キーワードの変更
 
 デフォルトでは Alfred上で `bs` と入力すると検索できるように設定されていますが、ワークフローの設定を開いて好きなキーワードに変更してください。
 

@@ -111,7 +111,7 @@ class Project {
         if ( $issue == null || !array_key_exists('issueKey', $issue)) {
             return false;
         }
-        error_log(json_encode($issue));
+        //error_log(json_encode($issue));
 		$issueKey = $issue["issueKey"]; // HOGE-123 など
 		if ( $issueKey == null ) {
 			return false;
@@ -157,7 +157,7 @@ class Project {
 			if ( $this-&gt;setIssueToResult($issue, $result) ) {
 				$result-&gt;updated = "Z";
 			} else {
-				$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$issueKey, $issueKey."は見つかりませんでした", "", "Z");
+				$result = new Result($this-&gt;projectCode, $this-&gt;workspaceUrl."/view/".$issueKey, $issueKey."は見つかりませんでした", "", "0");
 			}
 			$results[] = $result;
 		}
@@ -167,9 +167,9 @@ class Project {
         	$json = $wf-&gt;request( $this-&gt;workspaceUrl."/api/v2/issues?apiKey=".$this-&gt;apiKey."&amp;projectId[]=".$this-&gt;projectId."&amp;count=10&amp;sort=updated&amp;order=desc&amp;keyword=".urlencode($query) );
             //error_log($json);
     		$array = json_decode( $json , true );
+            //error_log(json_encode($array));
 
-            for($i=0; $i &lt; count($array); $i++) {
-                $issue = $array[$i];
+            foreach ($array as $issue) {
                 $result = new Result($this-&gt;projectCode, "", "", "", "");
                 if ( $this-&gt;setIssueToResult($issue, $result) ) {
                     $results[] = $result;
@@ -284,7 +284,7 @@ echo $wf-&gt;tojson();
 	<key>variablesdontexport</key>
 	<array/>
 	<key>version</key>
-	<string>1.1.1</string>
+	<string>1.1.2</string>
 	<key>webaddress</key>
 	<string>https://github.com/kunichiko/Alfred_Backlog_search_workflow</string>
 </dict>
