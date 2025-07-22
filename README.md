@@ -4,6 +4,11 @@ Alfred上で直接 Backlogの課題検索を行うためのワークフローで
 
 ただし、検索をシリアルに実行している関係で、実用上は３プロジェクトくらいが限界かなと思います。余力ができたら非同期呼び出し化するなどして並列に検索をかけられるようにしたいと思います。
 
+# 変更履歴
+
+* 2025/7/22 - v1.2.0
+    * Swift化して、PHPやnkfに依存しないようにしました
+
 # インストール方法
 
 とにかく動かしてみたいという方は以下のようにしてください。
@@ -48,61 +53,8 @@ URL最後にある数字がこのプロジェクトのIDです。
 
  `config.json` と同じ階層に `thumbs/` というフォルダがあり `ABC.png` や `DEF.png` というファイルがあると思います。このフォルダに `プロジェクトキー` + `.png` というファイル名でアイコンを置いておくと、検索結果の頭にアイコンが出るようになります。
 
-## Step 4. nkfのインストール
 
-Macから Alfredに入力された Unicode文字列は NFDになっています。NFDとは、例えば平仮名の「が」が「か」と「濁点」のコンビネーションとして表現する手法です。
-一方、Backlog内部は NFCという手法を使っているようで、「が」は１文字の「が」として扱われています。
-
-そのため、NFDで表現された文字列を Backlog APIに渡すとうまく検索文字がマッチしません。Backlog内部で NFD → NFC変換をしてくれると良いのですが、呼び出し側で行うことにしました。
-
-PHPの国際化パッケージ(PHP-intl)があれば簡単にできそうだったのですが、Macにには PHP-intlが標準でインストールされておらず、ちょっと面倒です。
-
-ひとまずコマンドラインの `nkf` を呼び出してお茶を濁していますので、Homebrewなどを使って nkf をインストールしてください。
-
-```
-> brew install nkf
-```
-
-余力があれば PHP-intlにも nkfにも依存しない解決方法を探します（それか Backlog側で対応してくれると嬉しいのですが……）。
-
-## Step 5. PHPのインストール
-
-macOS Monterey 以降、PHPがデフォルトでインストールされなくなってしまいました。こちらも Homebrewでインストール可能です。
-
-```
-> brew search php
-==> Formulae
-brew-php-switcher   php@7.2             phplint             pcp
-php                 php@7.3             phpmd               pup
-php-code-sniffer    php@7.4             phpmyadmin
-php-cs-fixer        php@8.0             phpstan
-php-cs-fixer@2      phpbrew             phpunit
-
-==> Casks
-eclipse-php 
-```
-
-ひとまず、7.4あたりでいいと思います。
-
-```
-> brew install php@7.4
-```
-
-```
-> brew link php
-```
-
-インストールされたPHPは `/opt/homebrew/opt/php@7.4/bin/php` や `/opt/homebrew/bin` あたりに入りますので、パスを通しておきます。
-zshを使っている場合は、`.zshrc` あたりに以下を書いておいてください。
-
-```
-# PHP
-#If you need to have php@7.4 first in your PATH, run:
-export PATH="/opt/homebrew/opt/php@7.4/bin:$PATH"
-export PATH="/opt/homebrew/opt/php@7.4/sbin:$PATH"
-```
-
-## Step 6. Alfred キーワードの変更
+## Step 4. Alfred キーワードの変更
 
 デフォルトでは Alfred上で `bs` と入力すると検索できるように設定されていますが、ワークフローの設定を開いて好きなキーワードに変更してください。
 
