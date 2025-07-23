@@ -71,8 +71,8 @@ struct Project {
         
         var results: [Result] = []
         
-        // 1〜4桁の数字だった場合は課題番号とみなして結果の一番上に入れる
-        if query.isNumeric && query.count < 4 {
+        // 1〜5桁の数字だった場合は課題番号とみなして結果の一番上に入れる
+        if query.isNumeric && query.count <= 5 {
             let issueKey = "\(projectCode)-\(query)"
             if isFirst {
                 let result = Result(
